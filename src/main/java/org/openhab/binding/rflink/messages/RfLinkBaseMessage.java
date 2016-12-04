@@ -11,8 +11,15 @@ package org.openhab.binding.rflink.messages;
 import java.util.HashMap;
 import java.util.List;
 
+import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
+import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.State;
+import org.openhab.binding.rflink.config.RfLinkDeviceConfiguration;
+import org.openhab.binding.rflink.exceptions.RfLinkException;
+import org.openhab.binding.rflink.exceptions.RfLinkNotImpException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base class for RFLink data classes. All other data classes should extend this class.
@@ -20,6 +27,8 @@ import org.eclipse.smarthome.core.types.State;
  * @author Cyril Cauchois - Initial contribution
  */
 public abstract class RfLinkBaseMessage implements RfLinkMessage {
+
+    private Logger logger = LoggerFactory.getLogger(RfLinkBaseMessage.class);
 
     protected final static String FIELDS_DELIMITER = ";";
     protected final static char VALUE_DELIMITER = '=';
@@ -124,5 +133,34 @@ public abstract class RfLinkBaseMessage implements RfLinkMessage {
     @Override
     public HashMap<String, State> getStates() {
         return null;
+    }
+
+    @Override
+    public void initializeFromChannel(RfLinkDeviceConfiguration config, ChannelUID channelUID, Command command)
+            throws RfLinkNotImpException, RfLinkException {
+        final String[] elements = config.deviceId.split(ID_DELIMITER);
+        if (elements.length >= 2) {
+            this.deviceName = elements[0];
+            this.deviceId = elements[1];
+        }
+    }
+
+    @Override
+    public byte[] decodeMessage(String suffix) {
+        String message = "10;"; // message for bridge
+        String deviceChannel = this.deviceId;
+
+        // convert channel to 6 character string, RfLink spec is a bit unclear on this, but seems to work...
+        deviceChannel = "000000".substring(deviceChannel.length()) + deviceChannel;
+
+        message += this.getDeviceName() + ";";
+        message += deviceChannel + ";";
+        message += suffix;
+
+        logger.debug("Decoded message to be sent: {}", message);
+
+        message += "\n"; // close message with newline
+
+        return message.getBytes();
     }
 }

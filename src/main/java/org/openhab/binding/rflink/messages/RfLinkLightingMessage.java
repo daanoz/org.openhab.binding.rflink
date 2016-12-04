@@ -13,10 +13,14 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.eclipse.smarthome.core.library.types.OnOffType;
+import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
+import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.State;
 import org.openhab.binding.rflink.RfLinkBindingConstants;
+import org.openhab.binding.rflink.config.RfLinkDeviceConfiguration;
 import org.openhab.binding.rflink.exceptions.RfLinkException;
+import org.openhab.binding.rflink.exceptions.RfLinkNotImpException;
 
 /**
  * RfLink data class for power switch message.
@@ -56,6 +60,17 @@ public class RfLinkLightingMessage extends RfLinkBaseMessage {
             if (text != null) {
                 for (Commands c : Commands.values()) {
                     if (text.equalsIgnoreCase(c.command)) {
+                        return c;
+                    }
+                }
+            }
+            return null;
+        }
+
+        public static Commands fromCommand(Command command) {
+            if (command != null) {
+                for (Commands c : Commands.values()) {
+                    if (command == c.onOffType) {
                         return c;
                     }
                 }
@@ -133,6 +148,29 @@ public class RfLinkLightingMessage extends RfLinkBaseMessage {
 
         return map;
 
+    }
+
+    @Override
+    public void initializeFromChannel(RfLinkDeviceConfiguration config, ChannelUID channelUID, Command triggeredCommand)
+            throws RfLinkNotImpException, RfLinkException {
+        super.initializeFromChannel(config, channelUID, triggeredCommand);
+        final String[] elements = config.deviceId.split(ID_DELIMITER);
+        if (elements.length >= 3) {
+            this.switchCode = elements[2];
+        }
+
+        command = Commands.fromCommand(triggeredCommand);
+        if (command == null) {
+            throw new RfLinkException("Can't convert " + triggeredCommand + " to Lighting Command");
+        }
+    }
+
+    @Override
+    public byte[] decodeMessage(String suffix) {
+        String message = this.switchCode + ";";
+        message += this.command.getText() + ";";
+
+        return super.decodeMessage(message);
     }
 
 }

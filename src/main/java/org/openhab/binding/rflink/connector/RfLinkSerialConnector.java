@@ -9,6 +9,9 @@ import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.xml.bind.DatatypeConverter;
+
+import org.apache.commons.io.IOUtils;
 import org.openhab.binding.rflink.exceptions.RfLinkException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,18 +75,17 @@ public class RfLinkSerialConnector implements RfLinkConnectorInterface, SerialPo
             throw new RfLinkException("Could not find COM port " + comPort);
         }
 
+        // open serial port, and use class name for the appName.
+        serialPort = portId.open(this.getClass().getName(), TIME_OUT);
+
+        // set port parameters
+        serialPort.setSerialPortParams(baudRate, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
+
+        // open the streams
+        input = new BufferedReader(new InputStreamReader(serialPort.getInputStream()));
+        output = serialPort.getOutputStream();
+
         try {
-            // open serial port, and use class name for the appName.
-            serialPort = portId.open(this.getClass().getName(), TIME_OUT);
-
-            // set port parameters
-            serialPort.setSerialPortParams(baudRate, SerialPort.DATABITS_8, SerialPort.STOPBITS_1,
-                    SerialPort.PARITY_NONE);
-
-            // open the streams
-            input = new BufferedReader(new InputStreamReader(serialPort.getInputStream()));
-            output = serialPort.getOutputStream();
-
             // add event listeners
             serialPort.addEventListener(this);
             serialPort.notifyOnDataAvailable(true);
@@ -96,17 +98,39 @@ public class RfLinkSerialConnector implements RfLinkConnectorInterface, SerialPo
 
     @Override
     public void disconnect() {
+        logger.debug("Disconnecting");
+
         if (serialPort != null) {
             serialPort.removeEventListener();
+            logger.debug("Serial port event listener stopped");
+        }
+
+        if (output != null) {
+            logger.debug("Close serial out stream");
+            IOUtils.closeQuietly(output);
+        }
+        if (input != null) {
+            logger.debug("Close serial in stream");
+            IOUtils.closeQuietly(input);
+        }
+
+        if (serialPort != null) {
+            logger.debug("Close serial port");
             serialPort.close();
         }
 
+        serialPort = null;
+        output = null;
+        input = null;
+
+        logger.debug("Closed");
     }
 
     @Override
     public void sendMessage(byte[] data) throws IOException {
-        // TODO Auto-generated method stub
-
+        logger.debug("Send data (len={}): {}", data.length, DatatypeConverter.printHexBinary(data));
+        output.write(data);
+        output.flush();
     }
 
     @Override

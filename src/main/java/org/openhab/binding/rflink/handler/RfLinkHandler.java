@@ -18,11 +18,14 @@ import org.eclipse.smarthome.core.thing.ThingUID;
 import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
 import org.eclipse.smarthome.core.thing.binding.ThingHandler;
 import org.eclipse.smarthome.core.types.Command;
+import org.eclipse.smarthome.core.types.RefreshType;
 import org.eclipse.smarthome.core.types.State;
 import org.openhab.binding.rflink.config.RfLinkDeviceConfiguration;
 import org.openhab.binding.rflink.exceptions.RfLinkException;
+import org.openhab.binding.rflink.exceptions.RfLinkNotImpException;
 import org.openhab.binding.rflink.internal.DeviceMessageListener;
 import org.openhab.binding.rflink.messages.RfLinkMessage;
+import org.openhab.binding.rflink.messages.RfLinkMessageFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,11 +53,21 @@ public class RfLinkHandler extends BaseThingHandler implements DeviceMessageList
 
         if (bridgeHandler != null) {
 
-            // TODO forge a message to be transmitted
+            if (command instanceof RefreshType) {
+                // Not supported
 
-            // bridgeHandler.sendMessage(msg);
-
-            logger.warn("RFLink doesn't support transmitting for channel '{}' yet", channelUID.getId());
+            } else {
+                try {
+                    RfLinkMessage msg = RfLinkMessageFactory
+                            .createMessageForSendingToThing(getThing().getThingTypeUID());
+                    msg.initializeFromChannel(getConfigAs(RfLinkDeviceConfiguration.class), channelUID, command);
+                    bridgeHandler.sendMessage(msg);
+                } catch (RfLinkNotImpException e) {
+                    logger.error("Message not supported: {}", e.getMessage());
+                } catch (RfLinkException e) {
+                    logger.error("Transmitting error: {}", e.getMessage());
+                }
+            }
 
         }
 

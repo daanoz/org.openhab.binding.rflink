@@ -8,6 +8,7 @@
  */
 package org.openhab.binding.rflink.handler;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
@@ -101,18 +102,6 @@ public class RfLinkBridgeHandler extends BaseBridgeHandler {
         }
     }
 
-    // private static synchronized byte getSeqNumber() {
-    // return seqNbr;
-    // }
-    //
-    // private static synchronized byte getNextSeqNumber() {
-    // if (++seqNbr == 0) {
-    // seqNbr = 1;
-    // }
-    //
-    // return seqNbr;
-    // }
-
     // private static synchronized RFXComTransmitterMessage getResponseMessage() {
     // return responseMessage;
     // }
@@ -153,54 +142,13 @@ public class RfLinkBridgeHandler extends BaseBridgeHandler {
     }
 
     public synchronized void sendMessage(RfLinkMessage msg) throws RfLinkException {
-
-        logger.warn("RFLink sendMessage not implemented yet");
-
-        // ((RfLinkBaseMessage) msg).seqNbr = getNextSeqNumber();
-        // byte[] data = msg.decodeMessage();
-        //
-        // logger.debug("Transmitting message '{}'", msg);
-        // logger.trace("Transmitting data: {}", DatatypeConverter.printHexBinary(data));
-        //
-        // setResponseMessage(null);
-        //
-        // try {
-        // connector.sendMessage(data);
-        // } catch (IOException e) {
-        // updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR);
-        // throw new RfLinkException(e);
-        // }
-        //
-        // try {
-        //
-        // RFXComTransmitterMessage resp = null;
-        // synchronized (notifierObject) {
-        // notifierObject.wait(timeout);
-        // resp = getResponseMessage();
-        // }
-        //
-        // if (resp != null) {
-        // switch (resp.response) {
-        // case ACK:
-        // case ACK_DELAYED:
-        // logger.debug("Command successfully transmitted, '{}' received", resp.response);
-        // break;
-        //
-        // case NAK:
-        // case NAK_INVALID_AC_ADDRESS:
-        // case UNKNOWN:
-        // logger.error("Command transmit failed, '{}' received", resp.response);
-        // break;
-        // }
-        // } else {
-        // logger.warn("No response received from transceiver");
-        // updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR);
-        // }
-        //
-        // } catch (InterruptedException ie) {
-        // logger.error("No acknowledge received from RFLink controller, timeout {}ms ", timeout);
-        // updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR);
-        // }
+        // this method requires more hardening, where feedback of the bridge is checked for success
+        try {
+            connector.sendMessage(msg.decodeMessage(""));
+        } catch (IOException e) {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR);
+            throw new RfLinkException(e);
+        }
     }
 
     private class MessageListener implements RfLinkEventListener {
